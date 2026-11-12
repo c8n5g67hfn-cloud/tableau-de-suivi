@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Tableau de suivi</title>
+<style>
+:root{--bg:#f4f5f7;--panel:#fff;--ink:#18202c;--muted:#77808d;--line:#e5e8ed;--accent:#263b59;--green:#18794e;--red:#b54747;--soft:#eef1f5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:25px 22px 16px;background:#111827;color:white}header .eyebrow{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#aeb9c8}h1{font-size:25px;margin:7px 0 4px;font-weight:650}header p{margin:0;color:#bac3cf;font-size:13px}
+main{max-width:1100px;margin:auto;padding:18px 16px 40px}
+.tabs{display:flex;gap:8px;margin:0 0 16px}.tab{border:1px solid var(--line);background:#fff;color:#536071;border-radius:12px;padding:11px 17px;font-weight:600;flex:1}.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px #18202c08}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.toolbar h2{font-size:17px;margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600}.btn.primary{background:var(--accent);color:white;border-color:var(--accent)}.btn.danger{color:var(--red)}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px;padding:12px;background:#f7f8fa;border-radius:12px}.datebar strong{font-size:14px}.datebar small{display:block;color:var(--muted);margin-top:3px}
+.tablewrap{overflow-x:auto;margin-top:15px;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-size:13px}
+th,td{padding:10px 9px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;min-width:64px;background:#fff}
+th:first-child,td:first-child{position:sticky;left:0;z-index:2;text-align:left;min-width:165px;max-width:210px;background:#fafbfc}
+thead th{background:#f3f5f8;color:#596475;font-weight:650}thead th:first-child{z-index:3}
+tbody tr:last-child td{border-bottom:0}th:last-child,td:last-child{border-right:0}
+.namecell{display:flex;align-items:center;gap:8px;justify-content:space-between}.namecell span{overflow-wrap:anywhere;font-weight:550}.mini{border:0;background:transparent;color:#929aa5;padding:3px 5px;font-size:16px}
+.mark{border:1px solid #e2e6eb;border-radius:9px;background:#fff;min-width:39px;height:37px;font-weight:750;font-size:16px;color:#a0a7b1}.mark.v{color:var(--green);background:#edf8f1;border-color:#ccebd7}.mark.x{color:var(--red);background:#fff0f0;border-color:#f2d0d0}.mark:disabled{opacity:1;cursor:default}
+.pending th{background:#eef2f7}.pending td{background:#fbfcfe}.pending td:first-child{background:#f5f7fa}
+.pending .mark{background:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:12px}.legend b{color:var(--ink)}
+.empty{padding:25px;text-align:center;color:var(--muted)}
+input{font:inherit}.field{display:flex;gap:8px;margin-top:12px}.field input{min-width:0;flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 2px 0}
+.status{font-size:12px;color:var(--muted);margin-top:10px}
+.modalback{position:fixed;inset:0;background:#10182788;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}.modal{width:min(420px,100%);background:#fff;border-radius:16px;padding:20px}.modal h3{margin:0 0 12px}.modal input{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin:7px 0 14px}.modalfoot{display:flex;justify-content:flex-end;gap:8px}
+@media(min-width:700px){main{padding:24px}.panel{padding:20px}.tab{flex:none;min-width:150px}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">Espace personnel</div><h1>Tableau de suivi</h1><p>Un jour après l'autre. Un historique clair, à ton rythme.</p></header>
+<main>
+  <nav class="tabs" id="tabs" aria-label="Espaces indépendants"></nav>
+  <section class="panel">
+    <div class="toolbar"><h2 id="sectionTitle">Suivi quotidien</h2><div class="actions">
+      <button class="btn" id="renameTab">Renommer l’onglet</button>
+      <button class="btn" id="addRow">＋ Ajouter une ligne</button>
+    </div></div>
+    <div class="datebar"><div><strong id="todayLabel">Nouvelle journée</strong><small id="dateHint">Les cases restent modifiables jusqu’à l’enregistrement.</small></div><button class="btn primary" id="saveDay">Enregistrer la journée</button></div>
+    <div class="tablewrap" id="tableWrap"></div>
+    <div class="legend"><span><b style="color:#18794e">V</b> = validé</span><span><b style="color:#b54747">X</b> = non validé</span><span><b>—</b> = neutre / non renseigné</span><span>Appuie plusieurs fois pour changer l’état.</span></div>
+    <div class="status" id="status"></div>
+  </section>
+  <section class="panel">
+    <div class="toolbar"><h2>Gestion des données</h2><div class="actions">
+      <button class="btn" id="exportBtn">Exporter une sauvegarde</button>
+      <button class="btn" id="importBtn">Importer</button><input id="importFile" type="file" accept="application/json" hidden>
+    </div></div>
+    <p class="note">Les modifications sont enregistrées automatiquement sur cet appareil. Exporte régulièrement une sauvegarde pour conserver une copie de ton historique ou le transférer sur un autre appareil.</p>
+  </section>
+</main>
+<div class="modalback" id="modalBack"><div class="modal"><h3 id="modalTitle">Modifier</h3><input id="modalInput" maxlength="45" autocomplete="off"><div class="modalfoot"><button class="btn" id="cancelModal">Annuler</button><button class="btn primary" id="confirmModal">Valider</button></div></div></div>
+<script>
+const KEY='tableau_suivi_v1';
+const fresh=()=>({tabs:[1,2,3].map((n)=>({name:'Onglet '+n,rows:[],days:[],draft:{date:localDate(),values:[]}})),active:0});
+function localDate(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+let state;try{state=JSON.parse(localStorage.getItem(KEY))||fresh();if(!state.tabs||state.tabs.length!==3)state=fresh()}catch(e){state=fresh()}
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function tab(){return state.tabs[state.active]}
+function ensureDraft(){const t=tab();if(!t.draft)t.draft={date:localDate(),values:[]};t.draft.values=t.rows.map((_,i)=>t.draft.values[i]||0)}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmt(d){if(!d)return '';const [y,m,day]=d.split('-');return day+'/'+m+'/'+y}
+function render(){
+ const t=tab();ensureDraft();
+ document.getElementById('tabs').innerHTML=state.tabs.map((x,i)=>`<button class="tab ${i===state.active?'active':''}" data-tab="${i}">${esc(x.name)}</button>`).join('');
+ document.getElementById('sectionTitle').textContent=t.name;
+ document.getElementById('todayLabel').textContent='Journée en cours · '+fmt(t.draft.date);
+ document.getElementById('dateHint').textContent='Appuie sur une case pour faire défiler : vide → V → X → vide.';
+ document.getElementById('status').textContent=t.days.length+' journée(s) enregistrée(s) dans cet onglet.';
+ let head='<thead><tr><th>Objectifs / habitudes</th>'+t.days.map(d=>`<th>${fmt(d.date)}</th>`).join('')+'<th class="pending">Aujourd’hui</th></tr></thead>';
+ let body=t.rows.map((r,i)=>'<tr><td><div class="namecell"><span>'+esc(r)+'</span><button class="mini" title="Modifier la ligne" data-edit="'+i+'">✎</button><button class="mini" title="Supprimer la ligne" data-del="'+i+'">×</button></div></td>'+t.days.map(d=>cell(d.values[i]||0,true)).join('')+`<td class="pending">${cell(t.draft.values[i]||0,false,i)}</td></tr>`).join('');
+ if(!t.rows.length)body='<tr><td colspan="'+(t.days.length+2)+'" class="empty">Ajoute ta première ligne pour commencer ton tableau.</td></tr>';
+ document.getElementById('tableWrap').innerHTML='<table>'+head+'<tbody>'+body+'</tbody></table>';
+ document.getElementById('saveDay').disabled=!t.rows.length;
+}
+function cell(v,locked,i){const label=v===1?'V':v===2?'X':'—';return `<td><button class="mark ${v===1?'v':v===2?'x':''}" ${locked?'disabled':`data-cell="${i}"`} aria-label="${label}">${label}</button></td>`}
+document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b){state.active=+b.dataset.tab;save();render()}});
+document.getElementById('tableWrap').addEventListener('click',e=>{
+ const t=tab(),c=e.target.closest('[data-cell]'),ed=e.target.closest('[data-edit]'),del=e.target.closest('[data-del]');
+ if(c){const i=+c.dataset.cell;t.draft.values[i]=((t.draft.values[i]||0)+1)%3;save();render()}
+ if(ed){const i=+ed.dataset.edit;openModal('Renommer la ligne',t.rows[i],v=>{if(v.trim()){t.rows[i]=v.trim();save();render()}})}
+ if(del){const i=+del.dataset.del;if(confirm('Supprimer cette ligne et ses anciennes valeurs ?')){t.rows.splice(i,1);t.days.forEach(d=>d.values.splice(i,1));t.draft.values.splice(i,1);save();render()}}
+});
+document.getElementById('addRow').onclick=()=>openModal('Nom de la nouvelle ligne','',v=>{if(v.trim()){const t=tab();t.rows.push(v.trim());t.draft.values.push(0);save();render()}});
+document.getElementById('renameTab').onclick=()=>openModal('Nom de cet onglet',tab().name,v=>{if(v.trim()){tab().name=v.trim();save();render()}});
+document.getElementById('saveDay').onclick=()=>{const t=tab();if(!t.rows.length)return;if(!confirm('Enregistrer et figer la journée du '+fmt(t.draft.date)+' ?'))return;t.days.push({date:t.draft.date,values:[...t.draft.values]});t.draft={date:localDate(),values:t.rows.map(()=>0)};save();render()};
+let modalAction=null;
+function openModal(title,value,action){document.getElementById('modalTitle').textContent=title;document.getElementById('modalInput').value=value;modalAction=action;document.getElementById('modalBack').style.display='flex';document.getElementById('modalInput').focus()}
+function closeModal(){document.getElementById('modalBack').style.display='none';modalAction=null}
+document.getElementById('cancelModal').onclick=closeModal;
+document.getElementById('confirmModal').onclick=()=>{if(modalAction)modalAction(document.getElementById('modalInput').value);closeModal()};
+document.getElementById('modalInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('confirmModal').click();if(e.key==='Escape')closeModal()});
+document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sauvegarde-tableau-suivi.json';a.click();URL.revokeObjectURL(a.href)};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data.tabs||data.tabs.length!==3)throw Error();if(confirm('Remplacer les données actuelles par cette sauvegarde ?')){state=data;state.active=0;save();render()}}catch(err){alert('Fichier de sauvegarde invalide.')}e.target.value=''};
+render();
+if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
