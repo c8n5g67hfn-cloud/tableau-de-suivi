@@ -102,7 +102,116 @@ document.getElementById('modalInput').addEventListener('keydown',e=>{if(e.key===
 document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sauvegarde-tableau-suivi.json';a.click();URL.revokeObjectURL(a.href)};
 document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data.tabs||data.tabs.length!==3)throw Error();if(confirm('Remplacer les données actuelles par cette sauvegarde ?')){state=data;state.active=0;save();render()}}catch(err){alert('Fichier de sauvegarde invalide.')}e.target.value=''};
+
+// Gestion automatique du changement de journée
+function dateAfter(date, days) {
+  const [y, m, d] = date.split('-').map(Number);
+  const next = new Date(y, m - 1, d);
+  next.setDate(next.getDate() + days);
+  return [
+    next.getFullYear(),
+    String(next.getMonth() + 1).padStart(2, '0'),
+    String(next.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function closeElapsedDays() {
+  const today = localDate();
+  let changed = false;
+
+  // On traite les trois onglets, pas seulement celui qui est affiché.
+  state.tabs.forEach(t => {
+    if (!t.draft) {
+      t.draft = { date: today, values: [] };
+    }
+
+    if (!Array.isArray(t.draft.values)) {
+      t.draft.values = [];
+    }
+
+    const originalDate = t.draft.date;
+    let date = originalDate;
+
+    while (date < today) {
+      // Évite de créer deux fois la même journée.
+      if (!t.days.some(day => day.date === date)) {
+        const values = t.rows.map((_, i) =>
+          date === originalDate ? (t.draft.values[i] || 0) : 0
+        );
+
+        t.days.push({ date, values });
+      }
+
+      date = dateAfter(date, 1);
+      changed = true;
+    }
+
+    if (originalDate < today) {
+      t.days.sort((a, b) => a.date.localeCompare(b.date));
+      t.draft = {
+        date: today,
+        values: t.rows.map(() => 0)
+      };
+    } else {
+      t.draft.values = t.rows.map((_, i) =>
+        t.draft.values[i] || 0
+      );
+    }
+  });
+
+  if (changed) save();
+}
+
+// Vérification à minuit, même si l'application reste ouverte.
+let midnightTimer;
+
+function scheduleMidnightCheck() {
+  clearTimeout(midnightTimer);
+
+  const now = new Date();
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0, 0, 1
+  );
+
+  midnightTimer = setTimeout(() => {
+    closeElapsedDays();
+    render();
+    scheduleMidnightCheck();
+  }, Math.max(1000, nextMidnight - now));
+}
+
+// Vérification lors du retour dans l'application.
+function refreshDayIfNeeded() {
+  const previous = state.tabs.map(t => t.draft.date).join('|');
+
+  closeElapsedDays();
+
+  const current = state.tabs.map(t => t.draft.date).join('|');
+
+  if (previous !== current) render();
+
+  scheduleMidnightCheck();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshDayIfNeeded();
+});
+
+window.addEventListener('focus', refreshDayIfNeeded);
+window.addEventListener('pageshow', refreshDayIfNeeded);
+
+// Vérification dès le lancement.
+closeElapsedDays();
 render();
-if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+scheduleMidnightCheck();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () =>
+    navigator.serviceWorker.register('./sw.js').catch(() => {})
+  );
+}
 </script>
 </body></html>
